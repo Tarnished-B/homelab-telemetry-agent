@@ -1,0 +1,8 @@
+agent:
+  device_id: homelab-pve
+  interval_seconds: 5
+
+mqtt:
+  host: "10.10.10.101"
+  port: 1883
+  topic: homelab/telemetry/pve
