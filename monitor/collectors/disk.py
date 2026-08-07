@@ -20,7 +20,7 @@ def get_disk_metrics():
 
     nvme_temp = 0.0
     if hasattr(psutil, "sensors_temperatures"):
-        temps = psutil.sensors_temperature()
+        temps = psutil.sensors_temperatures()
         for sensor_name, entries in temps.items():
             if 'nvme' in sensor_name.lower():
                 if len(entries) > 0:
