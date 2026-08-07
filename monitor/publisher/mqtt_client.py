@@ -27,7 +27,7 @@ class MQTTPublisher:
 
 if __name__ == "__main__":
     import time
-    publisher = MQTTPublisher("10.10.10.101", 1883, "homelab/telemetry/test")
+    publisher = MQTTPublisher("10.10.10.101", 1883, "homelab/telemetry/pve")
     publisher.connect()
 
     time.sleep(1)

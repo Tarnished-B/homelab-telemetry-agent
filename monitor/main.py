@@ -39,7 +39,7 @@ def main():
             payload = {
                 "version": 1,
                 "device_id": agent_id,
-                "os": "windows",
+                "os": "proxmox",
                 "timestamp": int(time.time()),
                 "metrics": {
                     "cpu": cpu_data,
