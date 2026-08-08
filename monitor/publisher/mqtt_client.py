@@ -1,13 +1,6 @@
 import json
 import os
 import paho.mqtt.client as mqtt
-from dotenv import load_dotenv
-
-load_dotenv()
-
-MQTT_HOST = os.getenv("MQTT_HOST")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
-MQTT_TOPIC = os.getenv("MQTT_TOPIC")
 
 class MQTTPublisher:
     def __init__(self, host, port, topic):
@@ -32,15 +25,3 @@ class MQTTPublisher:
             print(f"Đã gửi gói tin (size: {len(json_payload)} bytes) lên topic: {self.topic}")
         except Exception as e:
             print(f"Lỗi khi gửi dữ liệu: {e}")
-
-if __name__ == "__main__":
-    import time
-    publisher = MQTTPublisher(MQTT_HOST, MQTT_PORT, MQTT_TOPIC)
-    publisher.connect()
-
-    time.sleep(1)
-
-    test_data = {"test_message": "Hello World From Window", "value": 123}
-    publisher.publish(test_data)
-
-    time.sleep(1)

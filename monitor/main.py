@@ -1,29 +1,31 @@
 import time
-import yaml
+import os
+from dotenv import load_dotenv
 
 from collectors.cpu import get_cpu_metrics
 from collectors.disk import get_disk_metrics
 from collectors.memory import get_memory_metrics
 from collectors.network import NetworkCollector
-
 from publisher.mqtt_client import MQTTPublisher
 
-def load_config(config_path="config/config.yaml"):
-    with open(config_path, "r") as file:
-        return yaml.safe_load(file)
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(base_dir, '.env'))
 
 def main():
-
     print("Đang khởi tạo Homelab Telemetry Agent...")
-    config = load_config()
-    agent_id = config['agent']['device_id']
-    interval = config['agent']['interval_seconds']
+    
+    mqtt_host = os.getenv("MQTT_HOST", "127.0.0.1")
+    mqtt_port = int(os.getenv("MQTT_PORT", 1883))
+    mqtt_topic = os.getenv("MQTT_TOPIC", "homelab/telemetry/default")
+    agent_id = os.getenv("DEVICE_ID", "unknown_device")
+    interval = int(os.getenv("AGENT_INTERVAL", 5))
+    os_type = os.getenv("OS_TYPE", "linux")
 
     net_collector = NetworkCollector()
     publisher = MQTTPublisher(
-        host=config['mqtt']['host'],
-        port=config['mqtt']['port'],
-        topic=config['mqtt']['topic']
+        host=mqtt_host,
+        port=mqtt_port,
+        topic=mqtt_topic
     )
     publisher.connect()
 
@@ -31,26 +33,20 @@ def main():
 
     while True:
         try:
-            cpu_data = get_cpu_metrics()
-            mem_data = get_memory_metrics()
-            disk_data = get_disk_metrics()
-            net_data = net_collector.get_metrics()
-
             payload = {
                 "version": 1,
                 "device_id": agent_id,
-                "os": "proxmox",
+                "os": os_type,
                 "timestamp": int(time.time()),
                 "metrics": {
-                    "cpu": cpu_data,
-                    "mem": mem_data,
-                    "disk": disk_data,
-                    "net": net_data
+                    "cpu": get_cpu_metrics(),
+                    "mem": get_memory_metrics(),
+                    "disk": get_disk_metrics(),
+                    "net": net_collector.get_metrics()
                 }
             }
 
             publisher.publish(payload)
-
             time.sleep(interval)
 
         except KeyboardInterrupt:
