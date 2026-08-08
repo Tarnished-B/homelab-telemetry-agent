@@ -233,7 +233,3 @@ systemctl status homelab-agent
 journalctl -u homelab-agent -f
 
 ```
-
-```
-
-```
