@@ -12,13 +12,12 @@ Data flows vertically as follows:
 * **MQTT Broker:** High-speed message transport layer.
 * **Node-RED:** Acts as the data pipeline, subscribing to MQTT, processing payloads, and inserting them into the database. Equipped with Catch Nodes to prevent pipeline crashes during database downtime.
 * **PostgreSQL:** Relational database used to store timestamped telemetry data.
-* **Grafana:** Visualization dashboard featuring dynamic device filtering (`device_id`).
+* **Grafana:** Visualization dashboard featuring dynamic device filtering (`device_id`) and Telegram alerting.
 
 ## Project Structure
 
 ```text
 homelab-telemetry-agent/
-├── config/
 ├── monitor/
 │   ├── collectors/
 │   │   ├── cpu.py
@@ -39,8 +38,9 @@ homelab-telemetry-agent/
 ## Highlights
 
 * **Fault-Tolerant:** Implements code-level `try-except` blocks and a robust `Restart=always` systemd policy. Automatically recovers after Proxmox reboots or temporary disconnections.
-* **Secure Configuration:** No hardcoded credentials. All sensitive IPs, ports, and passwords are managed via a `.env` file.
+* **Secure Configuration (Single Source of Truth):** No hardcoded credentials or external yaml files. All sensitive IPs, ports, device IDs, and intervals are managed centrally via a `.env` file.
 * **Multi-Node Ready:** The Grafana dashboard is pre-configured with Variable Dropdowns. You can deploy this agent across multiple nodes (Raspberry Pis, VMs, LXCs) and seamlessly filter data per device without overlapping metrics.
+* **Telegram Alerts:** Real-time push notifications integrated via Grafana Alerting. Automatically notifies you when CPU usage exceeds 85% or NVMe temperature crosses 70°C, and sends a "Resolved" message when the system stabilizes.
 
 ## Deployment Guide
 
@@ -62,7 +62,7 @@ pip install -r requirements.txt
 
 ```
 
-### 3. Security Configuration
+### 3. Security & Agent Configuration
 
 Create a `.env` file from the provided example. **Never commit `.env` or other files containing credentials to version control.**
 
@@ -80,6 +80,8 @@ MQTT_PORT=1883
 MQTT_TOPIC=homelab/telemetry/pve
 MQTT_USERNAME=
 MQTT_PASSWORD=
+DEVICE_ID=homelab-pve
+AGENT_INTERVAL=5
 
 ```
 
@@ -89,9 +91,9 @@ Copy the configuration file `homelab-agent.service` to `/etc/systemd/system/`.
 Start and enable the service:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable homelab-agent.service
-sudo systemctl start homelab-agent.service
+systemctl daemon-reload
+systemctl enable homelab-agent.service
+systemctl start homelab-agent.service
 
 ```
 
@@ -100,19 +102,18 @@ sudo systemctl start homelab-agent.service
 * **Database Disconnects:** Node-RED catches database errors without crashing the flow. Incoming telemetry continues to be published by the agent; messages that cannot be persisted during an outage may be lost unless MQTT buffering/persistence is configured.
 * **Power Loss / Proxmox Reboot:** Zero manual intervention required. Systemd waits for the network and delays startup by 20 seconds (`ExecStartPre=/bin/sleep 20`) to allow the Proxmox environment to initialize.
 * **Check Agent Status:**
+
 ```bash
-sudo systemctl status homelab-agent
+systemctl status homelab-agent
 
 ```
 
-
 * **View Real-time Error Logs:**
+
 ```bash
 journalctl -u homelab-agent -f
 
 ```
-
-
 
 ---
 
@@ -130,13 +131,12 @@ Luồng dữ liệu trôi chảy theo chiều dọc như sau:
 * **MQTT Broker:** Trạm trung chuyển bản tin tốc độ cao.
 * **Node-RED:** Đóng vai trò Data Pipeline, hứng dữ liệu từ MQTT, xử lý và đẩy vào Database. Được trang bị Catch Node để luồng không bị crash khi database có lỗi.
 * **PostgreSQL:** Cơ sở dữ liệu quan hệ (Relational database) được sử dụng để lưu trữ dữ liệu telemetry theo thời gian.
-* **Grafana:** Bảng điều khiển (Dashboard) trực quan hóa dữ liệu, hỗ trợ lọc theo từng thiết bị (`device_id`).
+* **Grafana:** Bảng điều khiển (Dashboard) trực quan hóa dữ liệu, hỗ trợ lọc theo từng thiết bị (`device_id`) và xử lý cảnh báo (Alerts).
 
 ## Cấu trúc thư mục
 
 ```text
 homelab-telemetry-agent/
-├── config/
 ├── monitor/
 │   ├── collectors/
 │   │   ├── cpu.py
@@ -157,8 +157,9 @@ homelab-telemetry-agent/
 ## Tính năng nổi bật
 
 * **Khả năng tự phục hồi (Fault-Tolerant):** Tích hợp `Try-Catch` ở tầng code và cơ chế `Restart=always` của Systemd. Tự động kết nối lại khi Proxmox reboot.
-* **Bảo mật cấu hình:** Không hardcode thông tin nhạy cảm. Toàn bộ IP, Port, Password được quản lý qua biến môi trường (`.env`).
+* **Bảo mật & Tập trung (Single Source of Truth):** Loại bỏ hoàn toàn file cấu hình phụ. Toàn bộ IP, Port, Password, Device ID và chu kỳ quét được quản lý tập trung qua biến môi trường (`.env`).
 * **Multi-Node Ready:** Dashboard Grafana được thiết kế sẵn Variable Dropdown. Cắm thêm bao nhiêu thiết bị (Raspberry Pi, VM, LXC) cũng tự động nhận diện và phân tách dữ liệu rõ ràng.
+* **Cảnh báo Telegram:** Tích hợp sẵn luật cảnh báo trên Grafana. Tự động đẩy tin nhắn push về điện thoại khi CPU vượt ngưỡng 85% hoặc nhiệt độ NVMe trên 70°C, kèm thông báo "Resolved" khi hệ thống mát mẻ trở lại.
 
 ## Hướng dẫn Triển khai
 
@@ -180,7 +181,7 @@ pip install -r requirements.txt
 
 ```
 
-### 3. Cấu hình bảo mật
+### 3. Cấu hình bảo mật & Hệ thống
 
 Tạo file `.env` từ file mẫu. **Tuyệt đối không bao giờ commit file `.env` hoặc các file chứa thông tin nhạy cảm lên Git.**
 
@@ -198,6 +199,8 @@ MQTT_PORT=1883
 MQTT_TOPIC=homelab/telemetry/pve
 MQTT_USERNAME=
 MQTT_PASSWORD=
+DEVICE_ID=homelab-pve
+AGENT_INTERVAL=5
 
 ```
 
@@ -207,9 +210,9 @@ Copy file cấu hình `homelab-agent.service` vào `/etc/systemd/system/`.
 Khởi động service:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable homelab-agent.service
-sudo systemctl start homelab-agent.service
+systemctl daemon-reload
+systemctl enable homelab-agent.service
+systemctl start homelab-agent.service
 
 ```
 
@@ -218,14 +221,19 @@ sudo systemctl start homelab-agent.service
 * **Mất kết nối Database:** Node-RED sẽ bắt lỗi qua Catch Node để không làm crash luồng. Agent vẫn tiếp tục publish dữ liệu; tuy nhiên, các bản tin gửi đi trong lúc DB chết có thể bị mất nếu chưa cấu hình lưu trữ/buffering trên MQTT.
 * **Mất điện / Reboot Proxmox:** Không cần can thiệp thủ công. Systemd được cấu hình đợi mạng và delay thêm 20 giây (`ExecStartPre=/bin/sleep 20`) để môi trường Proxmox có thời gian khởi tạo các máy ảo/dịch vụ cần thiết.
 * **Kiểm tra trạng thái Agent:**
+
 ```bash
-sudo systemctl status homelab-agent
+systemctl status homelab-agent
 
 ```
 
-
 * **Xem log lỗi thực tế:**
+
 ```bash
 journalctl -u homelab-agent -f
+
+```
+
+```
 
 ```
