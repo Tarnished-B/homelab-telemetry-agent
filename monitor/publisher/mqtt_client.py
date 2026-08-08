@@ -1,5 +1,13 @@
 import json
+import os
 import paho.mqtt.client as mqtt
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MQTT_HOST = os.getenv("MQTT_HOST")
+MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_TOPIC = os.getenv("MQTT_TOPIC")
 
 class MQTTPublisher:
     def __init__(self, host, port, topic):
@@ -27,7 +35,7 @@ class MQTTPublisher:
 
 if __name__ == "__main__":
     import time
-    publisher = MQTTPublisher("10.10.10.101", 1883, "homelab/telemetry/pve")
+    publisher = MQTTPublisher(MQTT_HOST, MQTT_PORT, MQTT_TOPIC)
     publisher.connect()
 
     time.sleep(1)
