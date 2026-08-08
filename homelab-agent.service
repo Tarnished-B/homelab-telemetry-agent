@@ -1,0 +1,17 @@
+[Unit]
+Description=Homelab Telemetry Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/homelab-telemetry-agent
+ExecStartPre=/bin/sleep 20
+ExecStart=/opt/homelab-telemetry-agent/venv/bin/python monitor/main.py
+
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target
