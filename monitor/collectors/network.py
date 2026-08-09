@@ -2,7 +2,7 @@ import psutil
 import time
 
 class NetworkCollector:
-    def __init__(self, interface="vmbr0"):
+    def __init__(self, interface="wlp2s0"):
         self.interface = interface
         self.last_rx = 0
         self.last_tx = 0
