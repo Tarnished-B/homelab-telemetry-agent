@@ -229,7 +229,3 @@ sudo systemctl start homelab-agent.service
 * **Xung đột cấu hình (Configuration Drift):** Ban đầu, dự án sử dụng song song cả file `.yaml` và biến `.env`, dẫn đến việc các giá trị bị gán cứng (hardcode) đè lên cấu hình động lúc deploy. **Bài học:** Bắt buộc áp dụng nguyên tắc "Single Source of Truth" (Một nguồn chân lý duy nhất) bằng cách chuyển toàn bộ cấu hình sang `.env`.
 * **Bóng ma dữ liệu (Ghost Data):** Khi xóa bỏ một node LXC test, tên của nó vẫn xuất hiện trong menu Dropdown của Grafana vì dữ liệu lịch sử vẫn tồn tại trong PostgreSQL. **Bài học:** Để menu hiển thị chính xác các thiết bị đang hoạt động, cần phải dọn dẹp trực tiếp trong DB (lệnh `DELETE`) hoặc thiết lập lại biến SQL trên Grafana để lọc theo thời gian thực (`$__timeFilter`).
 * **Tinh chỉnh độ nhạy cảnh báo:** Việc cấu hình Grafana Alerting đòi hỏi phải tách biệt luồng dữ liệu CPU và NVMe. Nếu dùng chung một bẫy (Threshold) cho nhiều luồng dữ liệu sẽ gây ra hiện tượng spam tin nhắn sai lệch. **Bài học:** Cần nắm vững cơ chế rút gọn dữ liệu (`Reduce`) và thiết lập các điều kiện cảnh báo độc lập cho từng thông số để hệ thống hoạt động chính xác.
-
-```
-
-```
