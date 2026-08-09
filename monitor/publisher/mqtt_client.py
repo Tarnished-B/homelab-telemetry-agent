@@ -8,6 +8,13 @@ class MQTTPublisher:
         self.port = port
         self.topic = topic
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        
+        username = os.getenv("MQTT_USERNAME")
+        password = os.getenv("MQTT_PASSWORD")
+
+        if username and password:
+            self.client.username_pw_set(username, password)
+            print("Đã nạp thẻ từ MQTT (Username/Password).")
 
     def connect(self):
         print(f"Đang kết nối tới MQTT Broker tại {self.host}:{self.port}...")
