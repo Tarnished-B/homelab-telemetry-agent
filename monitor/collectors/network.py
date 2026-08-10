@@ -1,12 +1,19 @@
+import os
 import psutil
 import time
 
+
 class NetworkCollector:
-    def __init__(self, interface="wlp2s0"):
-        self.interface = interface
+    def __init__(self, interface=None):
+        # Default kept as None so the env var NETWORK_INTERFACE (if set) wins,
+        # and falling back to a Linux-typical NIC name only when both are absent.
+        # This preserves the original default of "wlp2s0" for existing setups
+        # while making the value overridable per-node without editing code.
+        self.interface = interface or os.getenv("NETWORK_INTERFACE") or "wlp2s0"
         self.last_rx = 0
         self.last_tx = 0
         self.last_time = 0
+        self._warned_fallback = False
 
     def get_metrics(self):
         net_io_pernic = psutil.net_io_counters(pernic=True)
@@ -14,6 +21,13 @@ class NetworkCollector:
         if self.interface in net_io_pernic:
             net_io = net_io_pernic[self.interface]
         else:
+            if not self._warned_fallback:
+                print(
+                    f"[network] Interface '{self.interface}' not found; "
+                    "falling back to aggregate counters across all NICs. "
+                    "Set NETWORK_INTERFACE in .env to silence this warning."
+                )
+                self._warned_fallback = True
             net_io = psutil.net_io_counters(pernic=False)
 
         current_time = time.time()
@@ -32,7 +46,7 @@ class NetworkCollector:
 
         if delta_time <= 0:
             return {"rx_mbps": 0.0, "tx_mbps": 0.0}
-        
+
         rx_mbps = (delta_rx * 8) / (delta_time * 1000 * 1000)
         tx_mbps = (delta_tx * 8) / (delta_time * 1000 * 1000)
 

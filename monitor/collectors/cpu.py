@@ -1,7 +1,12 @@
 import psutil
 
+# First call to psutil.cpu_percent(interval=None) always returns 0.0 because
+# psutil needs a previous sample to compute the delta. We warm it up once at
+# import time so the first measurement after the agent starts is meaningful.
+psutil.cpu_percent(interval=None)
+
 def get_cpu_metrics():
-    cpu_percent = psutil.cpu_percent(interval = None)
+    cpu_percent = psutil.cpu_percent(interval=None)
     cpu_freq = psutil.cpu_freq().current
 
     temp_c = 0.0

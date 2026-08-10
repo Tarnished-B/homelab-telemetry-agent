@@ -15,7 +15,10 @@ def get_disk_metrics():
                 "mount": partition.mountpoint,
                 "usage_percent": usage.percent
             })
-        except PermissionError:
+        except (PermissionError, OSError):
+            # PermissionError: mounts owned by other users (e.g. /boot/efi).
+            # OSError: mountpoint gone, broken NFS/CIFS, transient I/O errors.
+            # Skip silently to keep the rest of the payload intact.
             continue
 
     nvme_temp = 0.0

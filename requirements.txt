@@ -1,4 +1,3 @@
 psutil
-paho-mqtt
-PyYAML
+paho-mqtt>=2.0.0
 python-dotenv

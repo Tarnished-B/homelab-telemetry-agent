@@ -37,7 +37,6 @@ homelab-telemetry-agent/
 ├── requirements.txt
 ├── homelab-agent.service
 └── README.md
-
 ```
 
 ## Highlights
@@ -64,7 +63,6 @@ cd homelab-telemetry-agent
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-
 ```
 
 ### 3. Security & Agent Configuration
@@ -74,7 +72,6 @@ Create a `.env` file from the provided example. **Never commit `.env` or other f
 ```bash
 cp .env.example .env
 nano .env
-
 ```
 
 Populate it with your environment details:
@@ -87,8 +84,22 @@ MQTT_USERNAME=
 MQTT_PASSWORD=
 DEVICE_ID=homelab-pve
 AGENT_INTERVAL=5
-
+OS_TYPE=linux
 ```
+
+Available variables:
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `MQTT_HOST` | Yes | `127.0.0.1` | MQTT broker address |
+| `MQTT_PORT` | No | `1883` | MQTT broker port |
+| `MQTT_TOPIC` | Yes | `homelab/telemetry/default` | Publish topic |
+| `MQTT_USERNAME` | No | _empty_ | Set to enable auth |
+| `MQTT_PASSWORD` | No | _empty_ | Set to enable auth |
+| `DEVICE_ID` | Yes | `unknown_device` | Unique ID for this node (used by Grafana variable) |
+| `AGENT_INTERVAL` | No | `5` | Collection interval in seconds |
+| `OS_TYPE` | No | `linux` | OS label included in payload |
+| `NETWORK_INTERFACE` | No | `wlp2s0` | NIC to monitor. Defaults to `wlp2s0` because the reference setup runs Proxmox over WiFi on a mini-PC/laptop. Set to `vmbr0`/`eth0`/`eno1` for wired/LAN nodes. Falls back to aggregate counters when missing. |
 
 ### 4. Systemd Service Setup
 
@@ -99,7 +110,6 @@ Start and enable the service:
 sudo systemctl daemon-reload
 sudo systemctl enable homelab-agent.service
 sudo systemctl start homelab-agent.service
-
 ```
 
 ## Disaster Recovery
@@ -115,65 +125,33 @@ sudo systemctl start homelab-agent.service
 
 ---
 
-# Homelab Telemetry Stack
+# Homelab Telemetry Stack (Tiếng Việt)
 
-Một hệ thống giám sát (Monitoring) thời gian thực dành cho máy chủ Proxmox/Linux, được xây dựng theo kiến trúc lấy cảm hứng từ các hệ thống Production (production-inspired). Hệ thống này không chỉ thu thập dữ liệu mà còn được thiết kế để tự động phục hồi sau sự cố mất điện, rớt mạng hoặc lỗi database.
+Hệ thống giám sát (Monitoring) thời gian thực dành cho máy chủ Proxmox/Linux, được xây dựng theo kiến trúc lấy cảm hứng từ các hệ thống Production. Hệ thống không chỉ thu thập dữ liệu mà còn được thiết kế để tự động phục hồi sau sự cố mất điện, rớt mạng hoặc lỗi database.
 
-## Hình ảnh thực tế (Dashboard Preview)
+## Hình ảnh thực tế
 
 <img width="1749" height="999" alt="image" src="https://github.com/user-attachments/assets/d4678397-083d-4a36-9abe-e41140578212" />
 *(Giao diện theo dõi thông số phần cứng Proxmox theo thời gian thực)*
 
-## Kiến trúc hệ thống
-
-Luồng dữ liệu trôi chảy theo chiều dọc như sau:
+## Kiến trúc
 
 `[Python Agent] -> MQTT -> [Node-RED] -> PostgreSQL -> Grafana`
 
-* **Python Agent (Client):** Chạy ngầm bằng `systemd` trên Proxmox Host, đọc thông số phần cứng (CPU, RAM, Nhiệt độ NVMe, Network TX/RX) và băm thành JSON.
+* **Python Agent:** Chạy ngầm bằng `systemd` trên Proxmox Host, đọc thông số phần cứng (CPU, RAM, Nhiệt độ NVMe, Network TX/RX) và đóng gói thành JSON.
 * **MQTT Broker:** Trạm trung chuyển bản tin tốc độ cao.
-* **Node-RED:** Đóng vai trò Data Pipeline, hứng dữ liệu từ MQTT, xử lý và đẩy vào Database. Được trang bị Catch Node để luồng không bị crash khi database có lỗi.
-* **PostgreSQL:** Cơ sở dữ liệu quan hệ (Relational database) được sử dụng để lưu trữ dữ liệu telemetry theo thời gian.
-* **Grafana:** Bảng điều khiển (Dashboard) trực quan hóa dữ liệu, hỗ trợ lọc theo từng thiết bị (`device_id`) và xử lý cảnh báo (Alerts).
+* **Node-RED:** Data Pipeline, hứng dữ liệu từ MQTT, xử lý và đẩy vào Database. Có Catch Node để luồng không crash khi database lỗi.
+* **PostgreSQL:** Lưu trữ dữ liệu telemetry theo thời gian.
+* **Grafana:** Dashboard trực quan hóa dữ liệu, hỗ trợ lọc theo `device_id` và gửi cảnh báo.
 
-## Cấu trúc thư mục
+## Hướng dẫn triển khai
 
-```text
-homelab-telemetry-agent/
-├── monitor/
-│   ├── collectors/
-│   │   ├── cpu.py
-│   │   ├── memory.py
-│   │   ├── disk.py
-│   │   └── network.py
-│   ├── publisher/
-│   │   └── mqtt_client.py
-│   └── main.py
-├── .env.example
-├── .gitignore
-├── requirements.txt
-├── homelab-agent.service
-└── README.md
-
-```
-
-## Tính năng nổi bật
-
-* **Khả năng tự phục hồi (Fault-Tolerant):** Tích hợp `Try-Catch` ở tầng code và cơ chế `Restart=always` của Systemd. Tự động kết nối lại khi Proxmox reboot.
-* **Bảo mật & Tập trung (Single Source of Truth):** Loại bỏ hoàn toàn file cấu hình phụ. Toàn bộ IP, Port, Password, Device ID và chu kỳ quét được quản lý tập trung qua biến môi trường (`.env`).
-* **Multi-Node Ready:** Dashboard Grafana được thiết kế sẵn Variable Dropdown. Cắm thêm bao nhiêu thiết bị (Raspberry Pi, VM, LXC) cũng tự động nhận diện và phân tách dữ liệu rõ ràng.
-* **Cảnh báo Telegram:** Tích hợp sẵn luật cảnh báo trên Grafana. Tự động đẩy tin nhắn push về điện thoại khi CPU vượt ngưỡng 85% hoặc nhiệt độ NVMe trên 70°C, kèm thông báo "Resolved" khi hệ thống mát mẻ trở lại.
-
-## Hướng dẫn Triển khai
-
-### 1. Chuẩn bị
+### Chuẩn bị
 
 * Python 3.x
 * Đã dựng sẵn MQTT Broker, Node-RED, PostgreSQL và Grafana.
 
-### 2. Cài đặt Agent trên Node
-
-Clone repo về máy và cài đặt thư viện:
+### Cài đặt Agent trên Node
 
 ```bash
 git clone <link-github-cua-ban>
@@ -181,20 +159,16 @@ cd homelab-telemetry-agent
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-
 ```
 
-### 3. Cấu hình bảo mật & Hệ thống
+### Cấu hình bảo mật & hệ thống
 
-Tạo file `.env` từ file mẫu. **Tuyệt đối không bao giờ commit file `.env` hoặc các file chứa thông tin nhạy cảm lên Git.**
+**Tuyệt đối không commit file `.env` hoặc các file chứa thông tin nhạy cảm lên Git.**
 
 ```bash
 cp .env.example .env
 nano .env
-
 ```
-
-Điền thông tin hệ thống của bạn vào:
 
 ```ini
 MQTT_HOST=10.10.10.101
@@ -204,28 +178,38 @@ MQTT_USERNAME=
 MQTT_PASSWORD=
 DEVICE_ID=homelab-pve
 AGENT_INTERVAL=5
-
+OS_TYPE=linux
 ```
 
-### 4. Thiết lập chạy ngầm (Systemd Service)
+Bảng biến:
 
-Copy file cấu hình `homelab-agent.service` vào `/etc/systemd/system/`.
-Khởi động service:
+| Biến | Bắt buộc | Mặc định | Mô tả |
+|---|---|---|---|
+| `MQTT_HOST` | Có | `127.0.0.1` | Địa chỉ MQTT broker |
+| `MQTT_PORT` | Không | `1883` | Port MQTT |
+| `MQTT_TOPIC` | Có | `homelab/telemetry/default` | Topic publish |
+| `MQTT_USERNAME` | Không | _trống_ | Điền nếu broker yêu cầu auth |
+| `MQTT_PASSWORD` | Không | _trống_ | Điền nếu broker yêu cầu auth |
+| `DEVICE_ID` | Có | `unknown_device` | ID duy nhất cho node (Grafana dùng làm biến) |
+| `AGENT_INTERVAL` | Không | `5` | Chu kỳ thu thập (giây) |
+| `OS_TYPE` | Không | `linux` | Nhãn OS trong payload |
+| `NETWORK_INTERFACE` | Không | `wlp2s0` | Card mạng cần đo. Mặc định `wlp2s0` vì setup tham chiếu chạy Proxmox qua WiFi trên mini-PC/laptop. Node dùng dây LAN thì đổi sang `vmbr0`/`eth0`/`eno1`. Không có sẽ fallback tổng hợp. |
+
+### Thiết lập Systemd Service
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable homelab-agent.service
 sudo systemctl start homelab-agent.service
-
 ```
 
-## Cẩm nang Cứu hộ
+## Cẩm nang cứu hộ
 
-* **Mất kết nối Database:** Node-RED sẽ bắt lỗi qua Catch Node để không làm crash luồng. Agent vẫn tiếp tục publish dữ liệu; tuy nhiên, các bản tin gửi đi trong lúc DB chết có thể bị mất nếu chưa cấu hình lưu trữ/buffering trên MQTT.
-* **Mất điện / Reboot Proxmox:** Không cần can thiệp thủ công. Systemd được cấu hình đợi mạng và delay thêm 20 giây (`ExecStartPre=/bin/sleep 20`) để môi trường Proxmox có thời gian khởi tạo các máy ảo/dịch vụ cần thiết.
+* **Mất kết nối Database:** Node-RED bắt lỗi qua Catch Node. Agent vẫn publish; tin nhắn gửi đi trong lúc DB chết có thể mất nếu chưa cấu hình buffer MQTT.
+* **Mất điện / Reboot Proxmox:** Không cần can thiệp. Systemd đợi mạng và delay 20 giây để Proxmox kịp khởi tạo.
 
-## Thách thức & Bài học kinh nghiệm
+## Thách thức & bài học
 
-* **Xung đột cấu hình (Configuration Drift):** Ban đầu, dự án sử dụng song song cả file `.yaml` và biến `.env`, dẫn đến việc các giá trị bị gán cứng (hardcode) đè lên cấu hình động lúc deploy. **Bài học:** Bắt buộc áp dụng nguyên tắc "Single Source of Truth" (Một nguồn chân lý duy nhất) bằng cách chuyển toàn bộ cấu hình sang `.env`.
-* **Bóng ma dữ liệu (Ghost Data):** Khi xóa bỏ một node LXC test, tên của nó vẫn xuất hiện trong menu Dropdown của Grafana vì dữ liệu lịch sử vẫn tồn tại trong PostgreSQL. **Bài học:** Để menu hiển thị chính xác các thiết bị đang hoạt động, cần phải dọn dẹp trực tiếp trong DB (lệnh `DELETE`) hoặc thiết lập lại biến SQL trên Grafana để lọc theo thời gian thực (`$__timeFilter`).
-* **Tinh chỉnh độ nhạy cảnh báo:** Việc cấu hình Grafana Alerting đòi hỏi phải tách biệt luồng dữ liệu CPU và NVMe. Nếu dùng chung một bẫy (Threshold) cho nhiều luồng dữ liệu sẽ gây ra hiện tượng spam tin nhắn sai lệch. **Bài học:** Cần nắm vững cơ chế rút gọn dữ liệu (`Reduce`) và thiết lập các điều kiện cảnh báo độc lập cho từng thông số để hệ thống hoạt động chính xác.
+* **Configuration Drift:** Ban đầu dùng song song `.yaml` và `.env`, giá trị hardcode đè lên cấu hình động lúc deploy. **Bài học:** Áp dụng "Single Source of Truth" — toàn bộ config chỉ qua `.env`.
+* **Ghost Data:** Khi xóa một LXC test, tên vẫn hiện trong dropdown Grafana vì data lịch sử còn trong DB. **Bài học:** Chạy `DELETE` trong DB hoặc lọc biến SQL Grafana theo `$__timeFilter`.
+* **Alerting Logic Precision:** Cần tách luồng CPU và NVMe ra Evaluation Groups riêng. **Bài học:** Thiết lập `Reduce (Last)` + `Threshold` độc lập cho từng chỉ số để tránh alert fatigue.
